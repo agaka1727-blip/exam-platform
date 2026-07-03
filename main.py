@@ -100,3 +100,17 @@ def submit():
     conn.close()
 
     return jsonify({"status": "ok"})
+from flask import Flask, jsonify
+
+app = Flask(__name__)
+
+# пример вопросов
+QUESTIONS = [
+    {"q": "2 + 2 = ?", "a": "4"},
+    {"q": "3 + 3 = ?", "a": "6"},
+    {"q": "5 + 5 = ?", "a": "10"}
+]
+
+@app.route("/questions")
+def questions():
+    return jsonify(QUESTIONS)

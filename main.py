@@ -24,3 +24,10 @@ async def upload(file: UploadFile = File(...)):
 @app.get("/test")
 def get_test():
     return QUESTIONS
+@app.get("/")
+def home():
+    return {
+        "message": "Exam platform is running",
+        "upload": "/upload",
+        "test": "/test"
+    }

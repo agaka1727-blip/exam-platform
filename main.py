@@ -13,25 +13,45 @@ app.add_middleware(
 
 QUESTIONS = []
 
+
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
     global QUESTIONS
 
-    content = await file.read()
-    filename = file.filename.lower()
+    try:
+        content = await file.read()
+        filename = file.filename.lower()
 
-    if filename.endswith(".docx"):
-        QUESTIONS = parse_docx(content)
-    else:
-        text = content.decode("utf-8", errors="ignore")
-        QUESTIONS = parse_questions(text)
+        # DOCX файл
+        if filename.endswith(".docx"):
+            QUESTIONS = parse_docx(content)
 
-    return {"questions": len(QUESTIONS)}
+        # TXT или другой текст
+        else:
+            text = content.decode("utf-8", errors="ignore")
+            QUESTIONS = parse_questions(text)
+
+        return {
+            "status": "ok",
+            "questions": len(QUESTIONS)
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
 
 @app.get("/test")
 def get_test():
     return QUESTIONS
 
+
 @app.get("/")
 def home():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "upload": "/upload",
+        "test": "/test"
+    }

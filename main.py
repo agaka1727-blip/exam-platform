@@ -55,3 +55,48 @@ def home():
         "upload": "/upload",
         "test": "/test"
     }
+from flask import Flask, request, jsonify
+import sqlite3
+from datetime import datetime
+
+app = Flask(__name__)
+
+# --- база данных ---
+def init_db():
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            score INTEGER,
+            total INTEGER,
+            date TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
+
+# --- сохранение результата ---
+@app.route("/submit", methods=["POST"])
+def submit():
+    data = request.json
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO results (score, total, date)
+        VALUES (?, ?, ?)
+    """, (
+        data["score"],
+        data["total"],
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"status": "ok"})

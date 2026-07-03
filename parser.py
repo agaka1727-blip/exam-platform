@@ -1,60 +1,82 @@
 from docx import Document
+from io import BytesIO
+import re
+
 
 def parse_questions(text: str):
+    """
+    Парсинг обычного текста (TXT)
+    """
     lines = text.splitlines()
-
     return _parse_lines(lines)
 
 
 def parse_docx(file_bytes):
-    from io import BytesIO
-
+    """
+    Парсинг DOCX файла
+    """
     doc = Document(BytesIO(file_bytes))
     lines = []
 
     for p in doc.paragraphs:
-        if p.text.strip():
-            lines.append(p.text.strip())
+        text = p.text.strip()
+        if text:
+            lines.append(text)
 
     return _parse_lines(lines)
 
 
 def _parse_lines(lines):
     questions = []
-    current_q = None
+    current_question = None
     options = []
 
-    def flush():
-        nonlocal current_q, options
-        if current_q and options:
+    def save_question():
+        nonlocal current_question, options
+
+        if current_question:
             questions.append({
-                "question": current_q,
+                "question": current_question.strip(),
                 "options": options
             })
-        current_q = None
+
+        current_question = None
         options = []
 
     for line in lines:
         line = line.strip()
 
         if not line:
-            flush()
             continue
 
-        # вопрос
-        if current_q is None:
-            current_q = line
+        # 🔹 начало нового вопроса (1., 2), 3. и т.д.)
+        if re.match(r"^\d+[\)\.]", line):
+            save_question()
+            current_question = line
             continue
 
-        # варианты
+        # если вопрос ещё не начался
+        if current_question is None:
+            current_question = line
+            continue
+
+        # 🔹 правильный ответ
         if line.startswith("+"):
-            options.append({"text": line[1:].strip(), "correct": True})
-        elif line.startswith("-"):
-            options.append({"text": line[1:].strip(), "correct": False})
-        else:
-            # если вдруг продолжение вопроса
-            if options:
-                options[-1]["text"] += " " + line
+            options.append({
+                "text": line[1:].strip(),
+                "correct": True
+            })
 
-    flush()
+        # 🔹 неправильный ответ
+        elif line.startswith("-"):
+            options.append({
+                "text": line[1:].strip(),
+                "correct": False
+            })
+
+        # 🔹 если это продолжение вопроса
+        else:
+            current_question += " " + line
+
+    save_question()
     return questions

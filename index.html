@@ -3,108 +3,111 @@
 <head>
 <meta charset="UTF-8">
 <title>Exam Platform</title>
-
-<style>
-body {font-family: Arial; background:#f5f6f8; margin:0;}
-.header {background:#111827;color:white;padding:12px;text-align:center;}
-.box {max-width:800px;margin:20px auto;background:white;padding:20px;border-radius:10px;}
-.timer {text-align:center;font-size:20px;color:red;}
-.option {padding:10px;margin:8px 0;background:#eee;border-radius:6px;cursor:pointer;}
-.option:hover {background:#ddd;}
-.selected {background:#2563eb;color:white;}
-button {padding:10px;margin-top:10px;}
-</style>
-
 </head>
 
 <body>
 
-<div class="header">📘 Exam Platform</div>
+<h2>📘 Exam Platform</h2>
 
-<div class="box">
+<div id="timer">Загрузка...</div>
 
-<div class="timer" id="timer">60:00</div>
+<hr>
 
-<div id="status">Загрузка экзамена...</div>
-
-<div id="exam" style="display:none;">
-    <h3 id="q"></h3>
-    <div id="opts"></div>
-
-    <button onclick="prev()">⬅</button>
-    <button onclick="next()">➡</button>
-    <button onclick="finish()">Завершить</button>
-</div>
-
-<div id="result"></div>
-
-</div>
+<div id="app">Загрузка экзамена...</div>
 
 <script>
 
-let q = [];
-let i = 0;
-let ans = {};
-let t = 60*60;
+let questions = [];
+let index = 0;
+let score = 0;
+let timer = 60 * 60;
 
-// 📡 LOAD
-fetch("https://exam-platform-dmv5.onrender.com/test")
+const API = "https://exam-platform-dmv5.onrender.com/test";
+
+fetch(API)
 .then(r => r.json())
 .then(data => {
 
-    if (!Array.isArray(data) || data.length === 0) {
-        document.getElementById("status").innerText = "Нет вопросов";
+    questions = data;
+
+    if (!questions.length) {
+        document.getElementById("app").innerHTML = "❌ Нет вопросов";
         return;
     }
 
-    q = data.slice(0,30);
-
-    document.getElementById("status").style.display="none";
-    document.getElementById("exam").style.display="block";
-
-    draw();
+    render();
+    startTimer();
 });
 
-// ⏱ TIMER
-setInterval(()=>{
-    t--;
-    let m=Math.floor(t/60);
-    let s=t%60;
-    document.getElementById("timer").innerText=`${m}:${s<10?"0":""}${s}`;
-    if(t<=0) finish();
-},1000);
+function render() {
 
-// 📌 DRAW
-function draw(){
-    let x=q[i];
+    const q = questions[index];
 
-    document.getElementById("q").innerText=(i+1)+". "+x.question;
+    let html = `
+        <h3>Вопрос ${index + 1}</h3>
+        <p>${q.question}</p>
+    `;
 
-    let html="";
-    x.options.forEach((o,n)=>{
-        html+=`<div class="option ${ans[i]===n?'selected':''}"
-        onclick="pick(${n})">${o}</div>`;
+    q.options.forEach((opt, i) => {
+        html += `
+            <button onclick="answer(${i})">
+                ${opt}
+            </button>
+            <br><br>
+        `;
     });
 
-    document.getElementById("opts").innerHTML=html;
+    html += `
+        <hr>
+        <button onclick="prev()">⬅ Назад</button>
+        <button onclick="next()">Вперёд ➡</button>
+        <button onclick="finish()">Завершить</button>
+    `;
+
+    document.getElementById("app").innerHTML = html;
 }
 
-function pick(n){ans[i]=n;draw();}
-function prev(){if(i>0)i--;draw();}
-function next(){if(i<q.length-1)i++;draw();}
+function answer(i) {
+    if (i === questions[index].correct) {
+        score++;
+    }
+}
 
-// 📊 RESULT
-function finish(){
-    let score=0;
+function next() {
+    if (index < questions.length - 1) {
+        index++;
+        render();
+    }
+}
 
-    q.forEach((x,idx)=>{
-        if(ans[idx]===x.correct)score++;
-    });
+function prev() {
+    if (index > 0) {
+        index--;
+        render();
+    }
+}
 
-    document.getElementById("exam").style.display="none";
+function finish() {
+    alert("Результат: " + score + " / " + questions.length);
+}
 
-    document.getElementById("result").innerHTML=
-    `🎉 Результат:<br><br>${score}/${q.length}<br>${Math.round(score/q.length*100)}%`;
+function startTimer() {
+
+    setInterval(() => {
+
+        timer--;
+
+        let m = Math.floor(timer / 60);
+        let s = timer % 60;
+
+        document.getElementById("timer").innerText =
+            m + ":" + (s < 10 ? "0" : "") + s;
+
+        if (timer <= 0) {
+            finish();
+        }
+
+    }, 1000);
 }
 
 </script>

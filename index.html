@@ -5,74 +5,35 @@
 <title>Exam Platform</title>
 
 <style>
-body {
-    font-family: Arial;
-    background: #f4f6f9;
-    margin: 0;
-}
-
-.header {
-    background: #111827;
-    color: white;
-    padding: 12px;
-    text-align: center;
-}
-
-.container {
-    max-width: 800px;
-    margin: 20px auto;
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-}
-
-.timer {
-    text-align: center;
-    font-size: 20px;
-    color: red;
-}
-
-.option {
-    padding: 10px;
-    margin: 8px 0;
-    background: #eee;
-    cursor: pointer;
-    border-radius: 6px;
-}
-
-.option:hover {
-    background: #ddd;
-}
-
-.selected {
-    background: #2563eb;
-    color: white;
-}
-
-button {
-    padding: 10px;
-    margin-top: 10px;
-}
+body {font-family: Arial; background:#f5f6f8; margin:0;}
+.header {background:#111827;color:white;padding:12px;text-align:center;}
+.box {max-width:800px;margin:20px auto;background:white;padding:20px;border-radius:10px;}
+.timer {text-align:center;font-size:20px;color:red;}
+.option {padding:10px;margin:8px 0;background:#eee;border-radius:6px;cursor:pointer;}
+.option:hover {background:#ddd;}
+.selected {background:#2563eb;color:white;}
+button {padding:10px;margin-top:10px;}
 </style>
+
 </head>
 
 <body>
 
 <div class="header">📘 Exam Platform</div>
 
-<div class="container">
+<div class="box">
 
 <div class="timer" id="timer">60:00</div>
 
-<div id="status">Загрузка...</div>
+<div id="status">Загрузка экзамена...</div>
 
 <div id="exam" style="display:none;">
-    <h3 id="question"></h3>
-    <div id="options"></div>
+    <h3 id="q"></h3>
+    <div id="opts"></div>
 
-    <button onclick="prev()">⬅ Назад</button>
-    <button onclick="next()">Вперёд ➡</button>
-    <button onclick="submitTest()">Завершить</button>
+    <button onclick="prev()">⬅</button>
+    <button onclick="next()">➡</button>
+    <button onclick="finish()">Завершить</button>
 </div>
 
 <div id="result"></div>
@@ -81,111 +42,69 @@ button {
 
 <script>
 
-let questions = [];
-let current = 0;
-let answers = {};
-let time = 60 * 60;
+let q = [];
+let i = 0;
+let ans = {};
+let t = 60*60;
 
-// 🧠 DEBUG
-console.log("🚀 loading test...");
-
-// 📡 FETCH С ЗАЩИТОЙ ОТ ОШИБОК
+// 📡 LOAD
 fetch("https://exam-platform-dmv5.onrender.com/test")
-.then(async res => {
-    console.log("status:", res.status);
-    let data = await res.json();
-    console.log("data:", data);
+.then(r => r.json())
+.then(data => {
 
     if (!Array.isArray(data) || data.length === 0) {
-        document.getElementById("status").innerText = "❌ Нет вопросов";
+        document.getElementById("status").innerText = "Нет вопросов";
         return;
     }
 
-    questions = data.slice(0, 30);
+    q = data.slice(0,30);
 
-    document.getElementById("status").style.display = "none";
-    document.getElementById("exam").style.display = "block";
+    document.getElementById("status").style.display="none";
+    document.getElementById("exam").style.display="block";
 
-    render();
-})
-.catch(err => {
-    console.error(err);
-    document.getElementById("status").innerText =
-        "❌ Ошибка загрузки /test";
+    draw();
 });
 
 // ⏱ TIMER
-setInterval(() => {
-    time--;
+setInterval(()=>{
+    t--;
+    let m=Math.floor(t/60);
+    let s=t%60;
+    document.getElementById("timer").innerText=`${m}:${s<10?"0":""}${s}`;
+    if(t<=0) finish();
+},1000);
 
-    let m = Math.floor(time / 60);
-    let s = time % 60;
+// 📌 DRAW
+function draw(){
+    let x=q[i];
 
-    document.getElementById("timer").innerText =
-        `${m}:${s < 10 ? "0" : ""}${s}`;
+    document.getElementById("q").innerText=(i+1)+". "+x.question;
 
-    if (time <= 0) submitTest();
-}, 1000);
-
-// 📌 RENDER
-function render() {
-
-    let q = questions[current];
-
-    if (!q) {
-        document.getElementById("question").innerText = "Ошибка вопроса";
-        return;
-    }
-
-    document.getElementById("question").innerText =
-        (current+1) + ". " + q.question;
-
-    let html = "";
-
-    q.options.forEach((o, i) => {
-        html += `
-        <div class="option ${answers[current]===i?'selected':''}"
-        onclick="select(${i})">
-        ${o}
-        </div>`;
+    let html="";
+    x.options.forEach((o,n)=>{
+        html+=`<div class="option ${ans[i]===n?'selected':''}"
+        onclick="pick(${n})">${o}</div>`;
     });
 
-    document.getElementById("options").innerHTML = html;
+    document.getElementById("opts").innerHTML=html;
 }
 
-// ✔ select
-function select(i) {
-    answers[current] = i;
-    render();
-}
-
-// ⬅
-function prev() {
-    if (current > 0) current--;
-    render();
-}
-
-// ➡
-function next() {
-    if (current < questions.length - 1) current++;
-    render();
-}
+function pick(n){ans[i]=n;draw();}
+function prev(){if(i>0)i--;draw();}
+function next(){if(i<q.length-1)i++;draw();}
 
 // 📊 RESULT
-function submitTest() {
+function finish(){
+    let score=0;
 
-    let score = 0;
-
-    questions.forEach((q, i) => {
-        if (answers[i] === q.correct) score++;
+    q.forEach((x,idx)=>{
+        if(ans[idx]===x.correct)score++;
     });
 
-    document.getElementById("exam").style.display = "none";
+    document.getElementById("exam").style.display="none";
 
-    document.getElementById("result").innerHTML =
-        `🎉 Результат:<br><br>
-        ✔ ${score} / ${questions.length}<br>
-        📊 ${Math.round(score/questions.length*100)}%`;
+    document.getElementById("result").innerHTML=
+    `🎉 Результат:<br><br>${score}/${q.length}<br>${Math.round(score/q.length*100)}%`;
 }
 
 </script>

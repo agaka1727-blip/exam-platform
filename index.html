@@ -1,91 +1,148 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Exam Platform</title>
+<meta charset="UTF-8">
+<title>Exam Platform</title>
+
+<style>
+body { font-family: Arial; margin: 20px; }
+#top { display:flex; justify-content:space-between; align-items:center; }
+button { margin:5px; padding:10px; }
+.question-box { margin-top:20px; padding:15px; border:1px solid #ccc; }
+.nav { margin-top:20px; }
+</style>
 </head>
 
 <body>
 
-<!-- ⏱ ТАЙМЕР (В САМОМ ВЕРХУ) -->
-<div id="timer" style="font-size:20px; font-weight:bold;">
-    60:00
+<div id="top">
+    <div id="timer">60:00</div>
+    <div id="progress">0 / 30</div>
 </div>
 
 <hr>
 
-<!-- 🧪 ВОПРОСЫ (пример) -->
-<h3>Вопрос 1: 2 + 2 = ?</h3>
+<div id="app">Загрузка экзамена...</div>
 
-<button onclick="checkAnswer(true)">4</button>
-<button onclick="checkAnswer(false)">3</button>
-<button onclick="checkAnswer(false)">5</button>
-
-<hr>
-
-<!-- 🧾 КНОПКА ЗАВЕРШЕНИЯ -->
-<button onclick="submitTest()" style="padding:10px 20px; font-size:16px;">
-    Завершить тест
-</button>
-
-<!-- 📜 JAVASCRIPT -->
 <script>
 
-let time = 60 * 60; // 60 минут
-let score = 0;
-let total = 0;
+const API = "https://exam-platform-dmv5.onrender.com/test";
 
-// ⏱ таймер
-let timer = setInterval(() => {
+let questions = [];
+let selected = [];
+let current = 0;
+let answers = {};
+let time = 60 * 60;
+let timerStarted = false;
 
-    time--;
+/* ⏱ TIMER */
+function startTimer() {
+    if (timerStarted) return;
+    timerStarted = true;
 
-    let min = Math.floor(time / 60);
-    let sec = time % 60;
+    setInterval(() => {
+        time--;
 
-    document.getElementById("timer").innerText =
-        `${min}:${sec < 10 ? "0" : ""}${sec}`;
+        let m = Math.floor(time / 60);
+        let s = time % 60;
 
-    if (time <= 0) {
-        clearInterval(timer);
-        submitTest();
-    }
+        document.getElementById("timer").innerText =
+            `${m}:${s < 10 ? "0" : ""}${s}`;
 
-}, 1000);
+        if (time <= 0) submitExam();
 
-
-// ✔ проверка ответа
-function checkAnswer(isCorrect) {
-    total++;
-
-    if (isCorrect) {
-        score++;
-    }
+    }, 1000);
 }
 
+/* 📡 LOAD QUESTIONS */
+async function loadQuestions() {
+    const res = await fetch(API);
+    questions = await res.json();
 
-// 📤 отправка результата
-function submitTest() {
+    // 🎲 shuffle + pick 30
+    questions = questions.sort(() => Math.random() - 0.5);
+    selected = questions.slice(0, 30);
 
-    clearInterval(timer);
+    render();
+}
 
-    fetch("/submit", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            score: score,
-            total: total
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        alert("Тест завершён! Результат: " + score + "/" + total);
-        console.log(data);
+/* 📄 RENDER QUESTION */
+function render() {
+    const q = selected[current];
+
+    document.getElementById("progress").innerText =
+        `${current + 1} / ${selected.length}`;
+
+    let html = `
+        <div class="question-box">
+            <h3>${q.question}</h3>
+            <div>
+    `;
+
+    q.options.forEach((opt, i) => {
+        html += `
+            <button onclick="selectAnswer(${i})"
+            style="background:${answers[current] === i ? '#ddd' : ''}">
+                ${opt}
+            </button><br>
+        `;
     });
 
+    html += `
+            </div>
+        </div>
+
+        <div class="nav">
+            <button onclick="prev()">⬅ Назад</button>
+            <button onclick="next()">Далее ➡</button>
+            <button onclick="submitExam()">🏁 Завершить</button>
+        </div>
+    `;
+
+    document.getElementById("app").innerHTML = html;
+
+    startTimer();
 }
+
+/* ✔ ANSWER */
+function selectAnswer(i) {
+    answers[current] = i;
+    render();
+}
+
+/* ➡ NAV */
+function next() {
+    if (current < selected.length - 1) {
+        current++;
+        render();
+    }
+}
+
+function prev() {
+    if (current > 0) {
+        current--;
+        render();
+    }
+}
+
+/* 🏁 RESULT */
+function submitExam() {
+    let score = 0;
+
+    selected.forEach((q, i) => {
+        if (answers[i] === q.correct) {
+            score++;
+        }
+    });
+
+    document.getElementById("app").innerHTML = `
+        <h2>Результат</h2>
+        <p>Правильных: ${score} / ${selected.length}</p>
+        <p>Процент: ${Math.round(score / selected.length * 100)}%</p>
+    `;
+}
+
+loadQuestions();
 
 </script>
 

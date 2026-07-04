@@ -5,119 +5,179 @@
 <title>Exam Platform</title>
 
 <style>
-body { font-family: Arial; margin: 20px; }
-#top { display:flex; justify-content:space-between; align-items:center; }
-button { margin:5px; padding:10px; }
-.question-box { margin-top:20px; padding:15px; border:1px solid #ccc; }
-.nav { margin-top:20px; }
+body {
+    font-family: Arial;
+    background: #f4f6f9;
+    margin: 0;
+    padding: 0;
+}
+
+.header {
+    background: #1f2937;
+    color: white;
+    padding: 15px;
+    text-align: center;
+    font-size: 18px;
+}
+
+.container {
+    max-width: 800px;
+    margin: 20px auto;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.timer {
+    font-size: 20px;
+    font-weight: bold;
+    color: #ef4444;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.question {
+    font-size: 18px;
+    margin-bottom: 20px;
+}
+
+.option {
+    display: block;
+    background: #f3f4f6;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.option:hover {
+    background: #e5e7eb;
+}
+
+.option.selected {
+    background: #3b82f6;
+    color: white;
+}
+
+.nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.btn {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn:disabled {
+    background: #9ca3af;
+}
+
+.result {
+    text-align: center;
+    font-size: 22px;
+}
 </style>
+
 </head>
 
 <body>
 
-<div id="top">
-    <div id="timer">60:00</div>
-    <div id="progress">0 / 30</div>
+<div class="header">
+    📘 Exam Platform
 </div>
 
-<hr>
+<div class="container">
 
-<div id="app">Загрузка экзамена...</div>
+<div class="timer" id="timer">60:00</div>
+
+<div id="exam">
+    <div class="question" id="question">Загрузка экзамена...</div>
+    <div id="options"></div>
+
+    <div class="nav">
+        <button class="btn" onclick="prev()">⬅ Назад</button>
+        <button class="btn" onclick="next()">Вперёд ➡</button>
+    </div>
+
+    <div style="margin-top:15px;">
+        <button class="btn" onclick="submitTest()">Завершить тест</button>
+    </div>
+</div>
+
+<div id="result" class="result" style="display:none;"></div>
+
+</div>
 
 <script>
 
-const API = "https://exam-platform-dmv5.onrender.com/test";
-
 let questions = [];
-let selected = [];
 let current = 0;
 let answers = {};
 let time = 60 * 60;
-let timerStarted = false;
 
-/* ⏱ TIMER */
-function startTimer() {
-    if (timerStarted) return;
-    timerStarted = true;
-
-    setInterval(() => {
-        time--;
-
-        let m = Math.floor(time / 60);
-        let s = time % 60;
-
-        document.getElementById("timer").innerText =
-            `${m}:${s < 10 ? "0" : ""}${s}`;
-
-        if (time <= 0) submitExam();
-
-    }, 1000);
-}
-
-/* 📡 LOAD QUESTIONS */
-async function loadQuestions() {
-    const res = await fetch(API);
-    questions = await res.json();
-
-    // 🎲 shuffle + pick 30
-    questions = questions.sort(() => Math.random() - 0.5);
-    selected = questions.slice(0, 30);
-
+// 🌐 загрузка вопросов с backend
+fetch("https://exam-platform-dmv5.onrender.com/test")
+.then(r => r.json())
+.then(data => {
+    questions = data.slice(0, 30);
     render();
-}
+});
 
-/* 📄 RENDER QUESTION */
+// ⏱ таймер
+let timer = setInterval(() => {
+    time--;
+
+    let m = Math.floor(time / 60);
+    let s = time % 60;
+
+    document.getElementById("timer").innerText =
+        `${m}:${s < 10 ? "0" : ""}${s}`;
+
+    if (time <= 0) submitTest();
+
+}, 1000);
+
+// 📌 рендер вопроса
 function render() {
-    const q = selected[current];
+    if (!questions.length) return;
 
-    document.getElementById("progress").innerText =
-        `${current + 1} / ${selected.length}`;
+    let q = questions[current];
 
-    let html = `
-        <div class="question-box">
-            <h3>${q.question}</h3>
-            <div>
-    `;
+    document.getElementById("question").innerText =
+        (current+1) + ". " + q.question;
+
+    let html = "";
 
     q.options.forEach((opt, i) => {
         html += `
-            <button onclick="selectAnswer(${i})"
-            style="background:${answers[current] === i ? '#ddd' : ''}">
-                ${opt}
-            </button><br>
+            <div class="option ${answers[current]===i?'selected':''}"
+            onclick="select(${i})">
+            ${opt}
+            </div>
         `;
     });
 
-    html += `
-            </div>
-        </div>
-
-        <div class="nav">
-            <button onclick="prev()">⬅ Назад</button>
-            <button onclick="next()">Далее ➡</button>
-            <button onclick="submitExam()">🏁 Завершить</button>
-        </div>
-    `;
-
-    document.getElementById("app").innerHTML = html;
-
-    startTimer();
+    document.getElementById("options").innerHTML = html;
 }
 
-/* ✔ ANSWER */
-function selectAnswer(i) {
+// ✔ выбор ответа
+function select(i) {
     answers[current] = i;
     render();
 }
 
-/* ➡ NAV */
-function next() {
-    if (current < selected.length - 1) {
-        current++;
-        render();
-    }
-}
-
+// ⬅ назад
 function prev() {
     if (current > 0) {
         current--;
@@ -125,24 +185,32 @@ function prev() {
     }
 }
 
-/* 🏁 RESULT */
-function submitExam() {
-    let score = 0;
-
-    selected.forEach((q, i) => {
-        if (answers[i] === q.correct) {
-            score++;
-        }
-    });
-
-    document.getElementById("app").innerHTML = `
-        <h2>Результат</h2>
-        <p>Правильных: ${score} / ${selected.length}</p>
-        <p>Процент: ${Math.round(score / selected.length * 100)}%</p>
-    `;
+// ➡ дальше
+function next() {
+    if (current < questions.length - 1) {
+        current++;
+        render();
+    }
 }
 
-loadQuestions();
+// 📊 результат
+function submitTest() {
+    clearInterval(timer);
+
+    let score = 0;
+
+    questions.forEach((q, i) => {
+        if (answers[i] === q.correct) score++;
+    });
+
+    document.getElementById("exam").style.display = "none";
+    document.getElementById("result").style.display = "block";
+
+    document.getElementById("result").innerHTML =
+        `🎉 Тест завершён<br><br>
+        ✔ Правильных: ${score} / ${questions.length}<br>
+        📊 Процент: ${Math.round(score/questions.length*100)}%`;
+}
 
 </script>
 

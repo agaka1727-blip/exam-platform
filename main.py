@@ -1,8 +1,8 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from docx import Document
-import random
 import io
+import random
 
 app = FastAPI()
 
@@ -17,19 +17,15 @@ app.add_middleware(
 QUESTIONS = []
 
 
-# 📤 UPLOAD DOCX (ПРАВИЛЬНЫЙ ПАРСЕР)
+# 📤 UPLOAD DOCX
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
     global QUESTIONS
 
     content = await file.read()
-
     doc = Document(io.BytesIO(content))
 
-    lines = []
-    for p in doc.paragraphs:
-        if p.text.strip():
-            lines.append(p.text.strip())
+    lines = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
 
     QUESTIONS = []
 
@@ -47,20 +43,20 @@ async def upload(file: UploadFile = File(...)):
 
     return {
         "status": "ok",
-        "loaded_questions": len(QUESTIONS)
+        "loaded": len(QUESTIONS)
     }
 
 
 # 📥 TEST
 @app.get("/test")
-def get_test():
+def test():
     if not QUESTIONS:
         return []
 
     return random.sample(QUESTIONS, min(30, len(QUESTIONS)))
 
 
-# ❤️ health check
+# ❤️ HEALTH CHECK
 @app.get("/")
 def home():
-    return {"status": "server running"}
+    return {"status": "ok"}

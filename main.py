@@ -42,9 +42,9 @@ async def upload(file: UploadFile = File(...)):
             })
 
     return {
-        "status": "ok",
-        "loaded": len(QUESTIONS)
-    }
+    "status": "ok",
+    "questions": questions
+}
 
 
 # 📥 TEST

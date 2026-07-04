@@ -9,15 +9,13 @@ body {
     font-family: Arial;
     background: #f4f6f9;
     margin: 0;
-    padding: 0;
 }
 
 .header {
-    background: #1f2937;
+    background: #111827;
     color: white;
-    padding: 15px;
+    padding: 12px;
     text-align: center;
-    font-size: 18px;
 }
 
 .container {
@@ -26,96 +24,58 @@ body {
     background: white;
     padding: 20px;
     border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
 .timer {
-    font-size: 20px;
-    font-weight: bold;
-    color: #ef4444;
     text-align: center;
-    margin-bottom: 10px;
-}
-
-.question {
-    font-size: 18px;
-    margin-bottom: 20px;
+    font-size: 20px;
+    color: red;
 }
 
 .option {
-    display: block;
-    background: #f3f4f6;
-    padding: 12px;
+    padding: 10px;
     margin: 8px 0;
-    border-radius: 8px;
+    background: #eee;
     cursor: pointer;
-    transition: 0.2s;
+    border-radius: 6px;
 }
 
 .option:hover {
-    background: #e5e7eb;
+    background: #ddd;
 }
 
-.option.selected {
-    background: #3b82f6;
+.selected {
+    background: #2563eb;
     color: white;
-}
-
-.nav {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 20px;
 }
 
 button {
-    padding: 10px 15px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-.btn {
-    background: #3b82f6;
-    color: white;
-}
-
-.btn:disabled {
-    background: #9ca3af;
-}
-
-.result {
-    text-align: center;
-    font-size: 22px;
+    padding: 10px;
+    margin-top: 10px;
 }
 </style>
-
 </head>
 
 <body>
 
-<div class="header">
-    📘 Exam Platform
-</div>
+<div class="header">📘 Exam Platform</div>
 
 <div class="container">
 
 <div class="timer" id="timer">60:00</div>
 
-<div id="exam">
-    <div class="question" id="question">Загрузка экзамена...</div>
+<div id="status">Загрузка...</div>
+
+<div id="exam" style="display:none;">
+    <h3 id="question"></h3>
     <div id="options"></div>
 
-    <div class="nav">
-        <button class="btn" onclick="prev()">⬅ Назад</button>
-        <button class="btn" onclick="next()">Вперёд ➡</button>
-    </div>
-
-    <div style="margin-top:15px;">
-        <button class="btn" onclick="submitTest()">Завершить тест</button>
-    </div>
+    <button onclick="prev()">⬅ Назад</button>
+    <button onclick="next()">Вперёд ➡</button>
+    <button onclick="submitTest()">Завершить</button>
 </div>
 
-<div id="result" class="result" style="display:none;"></div>
+<div id="result"></div>
 
 </div>
 
@@ -126,16 +86,36 @@ let current = 0;
 let answers = {};
 let time = 60 * 60;
 
-// 🌐 загрузка вопросов с backend
+// 🧠 DEBUG
+console.log("🚀 loading test...");
+
+// 📡 FETCH С ЗАЩИТОЙ ОТ ОШИБОК
 fetch("https://exam-platform-dmv5.onrender.com/test")
-.then(r => r.json())
-.then(data => {
+.then(async res => {
+    console.log("status:", res.status);
+    let data = await res.json();
+    console.log("data:", data);
+
+    if (!Array.isArray(data) || data.length === 0) {
+        document.getElementById("status").innerText = "❌ Нет вопросов";
+        return;
+    }
+
     questions = data.slice(0, 30);
+
+    document.getElementById("status").style.display = "none";
+    document.getElementById("exam").style.display = "block";
+
     render();
+})
+.catch(err => {
+    console.error(err);
+    document.getElementById("status").innerText =
+        "❌ Ошибка загрузки /test";
 });
 
-// ⏱ таймер
-let timer = setInterval(() => {
+// ⏱ TIMER
+setInterval(() => {
     time--;
 
     let m = Math.floor(time / 60);
@@ -145,57 +125,54 @@ let timer = setInterval(() => {
         `${m}:${s < 10 ? "0" : ""}${s}`;
 
     if (time <= 0) submitTest();
-
 }, 1000);
 
-// 📌 рендер вопроса
+// 📌 RENDER
 function render() {
-    if (!questions.length) return;
 
     let q = questions[current];
+
+    if (!q) {
+        document.getElementById("question").innerText = "Ошибка вопроса";
+        return;
+    }
 
     document.getElementById("question").innerText =
         (current+1) + ". " + q.question;
 
     let html = "";
 
-    q.options.forEach((opt, i) => {
+    q.options.forEach((o, i) => {
         html += `
-            <div class="option ${answers[current]===i?'selected':''}"
-            onclick="select(${i})">
-            ${opt}
-            </div>
-        `;
+        <div class="option ${answers[current]===i?'selected':''}"
+        onclick="select(${i})">
+        ${o}
+        </div>`;
     });
 
     document.getElementById("options").innerHTML = html;
 }
 
-// ✔ выбор ответа
+// ✔ select
 function select(i) {
     answers[current] = i;
     render();
 }
 
-// ⬅ назад
+// ⬅
 function prev() {
-    if (current > 0) {
-        current--;
-        render();
-    }
+    if (current > 0) current--;
+    render();
 }
 
-// ➡ дальше
+// ➡
 function next() {
-    if (current < questions.length - 1) {
-        current++;
-        render();
-    }
+    if (current < questions.length - 1) current++;
+    render();
 }
 
-// 📊 результат
+// 📊 RESULT
 function submitTest() {
-    clearInterval(timer);
 
     let score = 0;
 
@@ -204,12 +181,11 @@ function submitTest() {
     });
 
     document.getElementById("exam").style.display = "none";
-    document.getElementById("result").style.display = "block";
 
     document.getElementById("result").innerHTML =
-        `🎉 Тест завершён<br><br>
-        ✔ Правильных: ${score} / ${questions.length}<br>
-        📊 Процент: ${Math.round(score/questions.length*100)}%`;
+        `🎉 Результат:<br><br>
+        ✔ ${score} / ${questions.length}<br>
+        📊 ${Math.round(score/questions.length*100)}%`;
 }
 
 </script>

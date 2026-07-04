@@ -1,10 +1,11 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from docx import Document
 import random
+import io
 
 app = FastAPI()
 
-# 🌐 CORS (чтобы сайт работал с GitHub Pages)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -13,31 +14,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🧠 Хранилище вопросов (в памяти сервера)
 QUESTIONS = []
 
 
-# 📤 ЗАГРУЗКА ФАЙЛА
+# 📤 UPLOAD DOCX (ПРАВИЛЬНЫЙ ПАРСЕР)
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
     global QUESTIONS
 
     content = await file.read()
-    text = content.decode("utf-8", errors="ignore")
 
-    lines = text.split("\n")
+    doc = Document(io.BytesIO(content))
+
+    lines = []
+    for p in doc.paragraphs:
+        if p.text.strip():
+            lines.append(p.text.strip())
 
     QUESTIONS = []
 
-    # 🧩 супер простой парсер (fallback)
     for i in range(len(lines)):
         if "?" in lines[i]:
             QUESTIONS.append({
-                "question": lines[i].strip(),
+                "question": lines[i],
                 "options": [
-                    lines[i+1].strip() if i+1 < len(lines) else "",
-                    lines[i+2].strip() if i+2 < len(lines) else "",
-                    lines[i+3].strip() if i+3 < len(lines) else ""
+                    lines[i+1] if i+1 < len(lines) else "",
+                    lines[i+2] if i+2 < len(lines) else "",
+                    lines[i+3] if i+3 < len(lines) else ""
                 ],
                 "correct": 0
             })
@@ -48,18 +51,16 @@ async def upload(file: UploadFile = File(...)):
     }
 
 
-# 📥 ОТДАЧА ВОПРОСОВ ДЛЯ ЭКЗАМЕНА
+# 📥 TEST
 @app.get("/test")
 def get_test():
     if not QUESTIONS:
         return []
 
-    sample = random.sample(QUESTIONS, min(30, len(QUESTIONS)))
-
-    return sample
+    return random.sample(QUESTIONS, min(30, len(QUESTIONS)))
 
 
-# ❤️ проверка что сервер жив
+# ❤️ health check
 @app.get("/")
 def home():
-    return {"status": "server is running"}
+    return {"status": "server running"}

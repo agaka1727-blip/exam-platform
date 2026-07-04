@@ -1,116 +1,65 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from parser import parse_questions, parse_docx
+import random
 
 app = FastAPI()
 
+# 🌐 CORS (чтобы сайт работал с GitHub Pages)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# 🧠 Хранилище вопросов (в памяти сервера)
 QUESTIONS = []
 
 
+# 📤 ЗАГРУЗКА ФАЙЛА
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
     global QUESTIONS
 
-    try:
-        content = await file.read()
-        filename = file.filename.lower()
+    content = await file.read()
+    text = content.decode("utf-8", errors="ignore")
 
-        # DOCX файл
-        if filename.endswith(".docx"):
-            QUESTIONS = parse_docx(content)
+    lines = text.split("\n")
 
-        # TXT или другой текст
-        else:
-            text = content.decode("utf-8", errors="ignore")
-            QUESTIONS = parse_questions(text)
+    QUESTIONS = []
 
-        return {
-            "status": "ok",
-            "questions": len(QUESTIONS)
-        }
+    # 🧩 супер простой парсер (fallback)
+    for i in range(len(lines)):
+        if "?" in lines[i]:
+            QUESTIONS.append({
+                "question": lines[i].strip(),
+                "options": [
+                    lines[i+1].strip() if i+1 < len(lines) else "",
+                    lines[i+2].strip() if i+2 < len(lines) else "",
+                    lines[i+3].strip() if i+3 < len(lines) else ""
+                ],
+                "correct": 0
+            })
 
-    except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e)
-        }
-
-
-@app.get("/test")
-def get_test():
-    return QUESTIONS
-
-
-@app.get("/")
-def home():
     return {
         "status": "ok",
-        "upload": "/upload",
-        "test": "/test"
+        "loaded_questions": len(QUESTIONS)
     }
-from flask import Flask, request, jsonify
-import sqlite3
-from datetime import datetime
-
-app = Flask(__name__)
-
-# --- база данных ---
-def init_db():
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS results (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            score INTEGER,
-            total INTEGER,
-            date TEXT
-        )
-    """)
-    conn.commit()
-    conn.close()
-
-init_db()
 
 
-# --- сохранение результата ---
-@app.route("/submit", methods=["POST"])
-def submit():
-    data = request.json
+# 📥 ОТДАЧА ВОПРОСОВ ДЛЯ ЭКЗАМЕНА
+@app.get("/test")
+def get_test():
+    if not QUESTIONS:
+        return []
 
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
+    sample = random.sample(QUESTIONS, min(30, len(QUESTIONS)))
 
-    cursor.execute("""
-        INSERT INTO results (score, total, date)
-        VALUES (?, ?, ?)
-    """, (
-        data["score"],
-        data["total"],
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    ))
+    return sample
 
-    conn.commit()
-    conn.close()
 
-    return jsonify({"status": "ok"})
-from flask import Flask, jsonify
-
-app = Flask(__name__)
-
-# пример вопросов
-QUESTIONS = [
-    {"q": "2 + 2 = ?", "a": "4"},
-    {"q": "3 + 3 = ?", "a": "6"},
-    {"q": "5 + 5 = ?", "a": "10"}
-]
-
-@app.route("/questions")
-def questions():
-    return jsonify(QUESTIONS)
+# ❤️ проверка что сервер жив
+@app.get("/")
+def home():
+    return {"status": "server is running"}

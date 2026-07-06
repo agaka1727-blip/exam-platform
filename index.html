@@ -3,13 +3,48 @@
 <head>
 <meta charset="UTF-8">
 <title>Exam Platform</title>
+
+<style>
+body{
+    font-family:Arial,sans-serif;
+    max-width:900px;
+    margin:40px auto;
+    padding:20px;
+}
+
+#timer{
+    font-size:24px;
+    font-weight:bold;
+    margin-bottom:20px;
+}
+
+button{
+    display:block;
+    width:100%;
+    padding:12px;
+    margin:10px 0;
+    font-size:16px;
+    cursor:pointer;
+}
+
+.nav{
+    display:flex;
+    gap:10px;
+    margin-top:20px;
+}
+
+.nav button{
+    width:auto;
+}
+</style>
+
 </head>
 
 <body>
 
 <h2>📘 Exam Platform</h2>
 
-<div id="timer">Загрузка...</div>
+<div id="timer">60:00</div>
 
 <hr>
 
@@ -20,94 +55,131 @@
 let questions = [];
 let index = 0;
 let score = 0;
-let timer = 60 * 60;
+let timer = 3600;
+let answered = {};
 
 const API = "https://exam-platform-dmv5.onrender.com/test";
 
 fetch(API)
-.then(r => r.json())
-.then(data => {
+.then(r=>r.json())
+.then(data=>{
 
-    questions = data;
+    console.log(data);
 
-    if (!questions.length) {
-        document.getElementById("app").innerHTML = "❌ Нет вопросов";
+    if(Array.isArray(data)){
+        questions=data;
+    }else if(data.questions){
+        questions=data.questions;
+    }else{
+        document.getElementById("app").innerHTML="Ошибка получения вопросов.";
+        return;
+    }
+
+    if(questions.length===0){
+        document.getElementById("app").innerHTML="Нет вопросов.";
         return;
     }
 
     render();
     startTimer();
+
+})
+.catch(err=>{
+    console.error(err);
+    document.getElementById("app").innerHTML="Ошибка соединения с сервером.";
 });
 
-function render() {
+function render(){
 
-    const q = questions[index];
+    const q=questions[index];
 
-    let html = `
-        <h3>Вопрос ${index + 1}</h3>
+    let html=`
+        <h3>Вопрос ${index+1} из ${questions.length}</h3>
         <p>${q.question}</p>
     `;
 
-    q.options.forEach((opt, i) => {
-        html += `
-            <button onclick="answer(${i})">
-                ${opt}
-            </button>
-            <br><br>
+    q.options.forEach((opt,i)=>{
+
+        html+=`
+        <button onclick="answer(${i})">
+            ${opt}
+        </button>
         `;
+
     });
 
-    html += `
-        <hr>
+    html+=`
+    <div class="nav">
         <button onclick="prev()">⬅ Назад</button>
         <button onclick="next()">Вперёд ➡</button>
-        <button onclick="finish()">Завершить</button>
+        <button onclick="finish()">Завершить тест</button>
+    </div>
     `;
 
-    document.getElementById("app").innerHTML = html;
+    document.getElementById("app").innerHTML=html;
+
 }
 
-function answer(i) {
-    if (i === questions[index].correct) {
+function answer(i){
+
+    answered[index]=i;
+
+    if(i===questions[index].correct){
         score++;
     }
+
+    next();
+
 }
 
-function next() {
-    if (index < questions.length - 1) {
+function next(){
+
+    if(index<questions.length-1){
         index++;
         render();
     }
+
 }
 
-function prev() {
-    if (index > 0) {
+function prev(){
+
+    if(index>0){
         index--;
         render();
     }
+
 }
 
-function finish() {
-    alert("Результат: " + score + " / " + questions.length);
+function finish(){
+
+    alert(
+        "Правильных ответов: "+
+        score+
+        " из "+
+        questions.length
+    );
+
 }
 
-function startTimer() {
+function startTimer(){
 
-    setInterval(() => {
+    setInterval(()=>{
 
         timer--;
 
-        let m = Math.floor(timer / 60);
-        let s = timer % 60;
+        const m=Math.floor(timer/60);
+        const s=timer%60;
 
-        document.getElementById("timer").innerText =
-            m + ":" + (s < 10 ? "0" : "") + s;
+        document.getElementById("timer").innerText=
+        String(m).padStart(2,"0")+":"+
+        String(s).padStart(2,"0");
 
-        if (timer <= 0) {
+        if(timer<=0){
             finish();
         }
 
-    }, 1000);
+    },1000);
+
 }
 
 </script>

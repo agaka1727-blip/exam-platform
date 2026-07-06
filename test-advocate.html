@@ -1,1 +1,452 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚖️ Тест по Адвокатуре</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 0 20px;
+            background: #f0f2f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #1a237e;
+            margin-bottom: 20px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #1a237e;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        #timer {
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            background: #e8eaf6;
+            color: #1a237e;
+        }
+        #timer.warning {
+            color: #dc3545;
+            background: #ffe6e6;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+        .question-text {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #1a237e;
+        }
+        .option-btn {
+            display: block;
+            width: 100%;
+            padding: 14px 20px;
+            margin: 8px 0;
+            text-align: left;
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        .option-btn:hover {
+            background: #e8eaf6;
+            border-color: #1a237e;
+        }
+        .option-btn.selected {
+            background: #c5cae9;
+            border-color: #1a237e;
+        }
+        .option-btn.correct {
+            background: #a5d6a7;
+            border-color: #2e7d32;
+        }
+        .option-btn.wrong {
+            background: #ef9a9a;
+            border-color: #c62828;
+        }
+        .option-btn.show-correct {
+            background: #a5d6a7;
+            border-color: #2e7d32;
+        }
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .nav-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.2s;
+            flex: 1;
+            min-width: 80px;
+        }
+        .nav-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-primary { background: #1a237e; color: white; }
+        .btn-success { background: #2e7d32; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .progress-info {
+            text-align: center;
+            margin: 15px 0;
+            color: #6c757d;
+            font-size: 16px;
+        }
+        .error-message {
+            color: #dc3545;
+            padding: 20px;
+            background: #ffe6e6;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .result-box {
+            text-align: center;
+            padding: 30px;
+        }
+        .result-score {
+            font-size: 56px;
+            font-weight: bold;
+            color: #1a237e;
+        }
+        .result-details {
+            font-size: 20px;
+            margin-top: 10px;
+        }
+        .info-box {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 2px solid #2e7d32;
+        }
+        .info-box strong {
+            color: #2e7d32;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="https://agaka1727-blip.github.io/exam-platform/" class="back-link">← На главную</a>
+    
+    <h1>⚖️ Тест по Адвокатуре</h1>
+    
+    <div class="info-box">
+        <strong>📋 Все вопросы по Адвокатуре • ⏱ Без ограничения времени</strong>
+    </div>
+    
+    <div id="timer">⏱ Загрузка...</div>
+    
+    <div id="app">Загрузка экзамена...</div>
+</div>
 
+<script>
+    const API_BASE = "https://exam-platform-dmv5.onrender.com";
+    let allQuestions = [];
+    let filteredQuestions = [];
+    let currentIndex = 0;
+    let score = 0;
+    let timer = 60 * 60;
+    let timerInterval = null;
+    let isFinished = false;
+    let answeredQuestions = new Set();
+    let userAnswers = {};
+
+    function loadQuestions() {
+        document.getElementById("app").innerHTML = "Загрузка экзамена...";
+        
+        fetch(`${API_BASE}/questions`)
+            .then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            })
+            .then(data => {
+                allQuestions = data;
+                if (!allQuestions || allQuestions.length === 0) {
+                    document.getElementById("app").innerHTML = `
+                        <div class="error-message">
+                            ❌ Нет вопросов.<br>
+                            Загрузите файл через главную страницу.
+                        </div>
+                    `;
+                    document.getElementById("timer").innerText = "⏱ Нет вопросов";
+                    return;
+                }
+                startTest();
+            })
+            .catch(error => {
+                console.error("Ошибка:", error);
+                document.getElementById("app").innerHTML = `
+                    <div class="error-message">
+                        ❌ Не удалось загрузить вопросы.<br>
+                        Проверьте сервер: ${API_BASE}<br>
+                        <small>${error.message}</small>
+                    </div>
+                `;
+                document.getElementById("timer").innerText = "⏱ Ошибка";
+            });
+    }
+
+    function startTest() {
+        // Фильтруем только вопросы по Адвокатуре
+        const advocateQuestions = allQuestions.filter(q => q.category === 'Адвокатура');
+        
+        if (advocateQuestions.length === 0) {
+            document.getElementById("app").innerHTML = `
+                <div class="error-message">
+                    ❌ Нет вопросов по Адвокатуре.<br>
+                    Проверьте, что вопросы загружены.
+                </div>
+            `;
+            document.getElementById("timer").innerText = "⏱ Нет вопросов";
+            return;
+        }
+        
+        filteredQuestions = shuffleArray([...advocateQuestions]);
+        
+        document.querySelector('.info-box').innerHTML = `
+            <strong>📋 ${filteredQuestions.length} вопросов по Адвокатуре • ⏱ Без ограничения времени</strong>
+        `;
+        
+        currentIndex = 0;
+        score = 0;
+        answeredQuestions = new Set();
+        userAnswers = {};
+        isFinished = false;
+        timer = 60 * 60;
+        
+        render();
+        startTimer();
+    }
+
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    function render() {
+        if (isFinished) return;
+        if (!filteredQuestions || filteredQuestions.length === 0) {
+            document.getElementById("app").innerHTML = `
+                <div class="error-message">❌ Нет вопросов</div>
+            `;
+            return;
+        }
+        
+        const q = filteredQuestions[currentIndex];
+        if (!q) return;
+
+        let html = `
+            <div class="question-text">
+                <strong>Вопрос ${currentIndex + 1} из ${filteredQuestions.length}</strong>
+                <br><br>
+                ${escapeHtml(q.question)}
+            </div>
+        `;
+
+        const isAnswered = answeredQuestions.has(currentIndex);
+        const selectedAnswer = userAnswers[currentIndex];
+        
+        q.options.forEach((opt, i) => {
+            let btnClass = 'option-btn';
+            const isCorrect = i === q.correct;
+            
+            if (isAnswered) {
+                if (selectedAnswer === i) {
+                    btnClass += isCorrect ? ' correct' : ' wrong';
+                }
+                if (isCorrect) {
+                    btnClass += ' show-correct';
+                }
+            } else {
+                if (selectedAnswer === i) {
+                    btnClass += ' selected';
+                }
+            }
+            
+            const disabled = isAnswered ? 'style="pointer-events:none;"' : '';
+            html += `
+                <button class="${btnClass}" onclick="selectAnswer(${i})" ${disabled}>
+                    ${i + 1}. ${escapeHtml(opt)}
+                </button>
+            `;
+        });
+
+        html += `
+            <div class="progress-info">
+                ${currentIndex + 1} / ${filteredQuestions.length} • Правильных: ${score}
+            </div>
+            <div class="nav-buttons">
+                <button class="nav-btn btn-secondary" onclick="prevQuestion()" ${currentIndex === 0 ? 'disabled' : ''}>
+                    ⬅ Назад
+                </button>
+                <button class="nav-btn btn-primary" onclick="nextQuestion()" ${currentIndex === filteredQuestions.length - 1 ? 'disabled' : ''}>
+                    Вперёд ➡
+                </button>
+                <button class="nav-btn btn-success" onclick="finishTest()">
+                    🏁 Завершить
+                </button>
+            </div>
+        `;
+
+        document.getElementById("app").innerHTML = html;
+    }
+
+    function selectAnswer(i) {
+        if (answeredQuestions.has(currentIndex)) return;
+        
+        const q = filteredQuestions[currentIndex];
+        userAnswers[currentIndex] = i;
+        answeredQuestions.add(currentIndex);
+        
+        if (i === q.correct) {
+            score++;
+        }
+        
+        render();
+        
+        setTimeout(() => {
+            if (currentIndex < filteredQuestions.length - 1) {
+                nextQuestion();
+            }
+        }, 500);
+    }
+
+    function nextQuestion() {
+        if (currentIndex < filteredQuestions.length - 1) {
+            currentIndex++;
+            render();
+        }
+    }
+
+    function prevQuestion() {
+        if (currentIndex > 0) {
+            currentIndex--;
+            render();
+        }
+    }
+
+    function finishTest() {
+        if (isFinished) return;
+        isFinished = true;
+        if (timerInterval) clearInterval(timerInterval);
+        
+        const total = filteredQuestions.length;
+        const percent = Math.round((score / total) * 100);
+        let grade = 'Неудовлетворительно';
+        if (percent >= 90) grade = 'Отлично 🏆';
+        else if (percent >= 70) grade = 'Хорошо 👍';
+        else if (percent >= 50) grade = 'Удовлетворительно 📚';
+        
+        document.getElementById("app").innerHTML = `
+            <div class="result-box">
+                <h2>📊 Результат</h2>
+                <div class="result-score">${score} / ${total}</div>
+                <div class="result-details">${percent}% — ${grade}</div>
+                <br>
+                <button class="nav-btn btn-primary" onclick="resetTest()">🔄 Пройти заново</button>
+                <button class="nav-btn btn-secondary" onclick="showWrongAnswers()">❌ Посмотреть ошибки</button>
+            </div>
+        `;
+        document.getElementById("timer").innerText = "⏱ Завершено";
+    }
+
+    function showWrongAnswers() {
+        const wrongQuestions = filteredQuestions.filter((q, idx) => {
+            return answeredQuestions.has(idx) && userAnswers[idx] !== q.correct;
+        });
+        if (wrongQuestions.length === 0) {
+            alert('🎉 Все ответы правильные!');
+            return;
+        }
+        filteredQuestions = wrongQuestions;
+        currentIndex = 0;
+        score = 0;
+        answeredQuestions = new Set();
+        userAnswers = {};
+        isFinished = false;
+        document.getElementById('timer').innerText = '📖 Просмотр ошибок';
+        render();
+    }
+
+    function resetTest() {
+        startTest();
+    }
+
+    function startTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        
+        timerInterval = setInterval(() => {
+            timer--;
+            updateTimerDisplay();
+            
+            if (timer <= 0) {
+                clearInterval(timerInterval);
+            }
+        }, 1000);
+    }
+
+    function updateTimerDisplay() {
+        const timerElement = document.getElementById("timer");
+        const m = Math.floor(timer / 60);
+        const s = timer % 60;
+        timerElement.innerText = `⏱ ${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    loadQuestions();
+</script>
+</body>
+</html>

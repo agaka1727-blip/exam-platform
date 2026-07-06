@@ -2,7 +2,9 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from docx import Document
 import io
+import json
 import random
+import os
 
 app = FastAPI()
 
@@ -14,7 +16,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-QUESTIONS = []
+DB_FILE = "questions.json"
+
+
+# ---------- загрузка из файла ----------
+def load_questions():
+    if os.path.exists(DB_FILE):
+        with open(DB_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+
+# ---------- сохранение ----------
+def save_questions(data):
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+# ---------- память ----------
+QUESTIONS = load_questions()
 
 
 # 📤 UPLOAD DOCX
@@ -41,15 +61,20 @@ async def upload(file: UploadFile = File(...)):
                 "correct": 0
             })
 
+    save_questions(QUESTIONS)
+
     return {
-    "status": "ok",
-    "questions": questions
-}
+        "status": "ok",
+        "loaded_questions": len(QUESTIONS)
+    }
 
 
 # 📥 TEST
 @app.get("/test")
 def test():
+    global QUESTIONS
+    QUESTIONS = load_questions()
+
     if not QUESTIONS:
         return []
 

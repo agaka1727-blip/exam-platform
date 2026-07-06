@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚖️ Тест по Адвокатуре</title>
+    <title>⚖️ Тест по Конституционному праву</title>
     <style>
         * {
             box-sizing: border-box;
@@ -175,7 +175,7 @@
     <h1>⚖️ Тест по Адвокатуре</h1>
     
     <div class="info-box">
-        <strong>📋 Все вопросы по Адвокатуре • ⏱ Без ограничения времени</strong>
+        <strong>📋 Все вопросы (2586) • ⏱ Без ограничения времени</strong>
     </div>
     
     <div id="timer">⏱ Загрузка...</div>
@@ -184,7 +184,7 @@
 </div>
 
 <script>
-    const API_BASE = "https://exam-platform-dmv5.onrender.com";
+    const API_BASE = "https://exam-advocate.onrender.com";
     let allQuestions = [];
     let filteredQuestions = [];
     let currentIndex = 0;
@@ -231,24 +231,11 @@
     }
 
     function startTest() {
-        // Фильтруем только вопросы по Адвокатуре
-        const advocateQuestions = allQuestions.filter(q => q.category === 'Адвокатура');
-        
-        if (advocateQuestions.length === 0) {
-            document.getElementById("app").innerHTML = `
-                <div class="error-message">
-                    ❌ Нет вопросов по Адвокатуре.<br>
-                    Проверьте, что вопросы загружены.
-                </div>
-            `;
-            document.getElementById("timer").innerText = "⏱ Нет вопросов";
-            return;
-        }
-        
-        filteredQuestions = shuffleArray([...advocateQuestions]);
+        // Показываем все вопросы без фильтра по категории
+        filteredQuestions = shuffleArray([...allQuestions]);
         
         document.querySelector('.info-box').innerHTML = `
-            <strong>📋 ${filteredQuestions.length} вопросов по Адвокатуре • ⏱ Без ограничения времени</strong>
+            <strong>📋 Все вопросы (${filteredQuestions.length}) • ⏱ Без ограничения времени</strong>
         `;
         
         currentIndex = 0;
@@ -285,6 +272,7 @@
         let html = `
             <div class="question-text">
                 <strong>Вопрос ${currentIndex + 1} из ${filteredQuestions.length}</strong>
+                ${q.category ? `<br><small style="color:#6c757d;">📂 ${q.category}</small>` : ''}
                 <br><br>
                 ${escapeHtml(q.question)}
             </div>
@@ -424,19 +412,14 @@
         
         timerInterval = setInterval(() => {
             timer--;
-            updateTimerDisplay();
+            const m = Math.floor(timer / 60);
+            const s = timer % 60;
+            document.getElementById("timer").innerText = `⏱ ${m}:${s < 10 ? '0' : ''}${s}`;
             
             if (timer <= 0) {
                 clearInterval(timerInterval);
             }
         }, 1000);
-    }
-
-    function updateTimerDisplay() {
-        const timerElement = document.getElementById("timer");
-        const m = Math.floor(timer / 60);
-        const s = timer % 60;
-        timerElement.innerText = `⏱ ${m}:${s < 10 ? '0' : ''}${s}`;
     }
 
     function escapeHtml(text) {

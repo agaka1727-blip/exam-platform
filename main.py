@@ -17,37 +17,47 @@ app.add_middleware(
 QUESTIONS = []
 
 
-# 📤 UPLOAD DOCX
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
     global QUESTIONS
 
-    content = await file.read()
-    doc = Document(io.BytesIO(content))
+    try:
+        content = await file.read()
+        doc = Document(io.BytesIO(content))
 
-    lines = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+        lines = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
 
-    QUESTIONS = []
+        QUESTIONS = []
 
-    for i in range(len(lines)):
-        if "?" in lines[i]:
-            QUESTIONS.append({
-                "question": lines[i],
-                "options": [
-                    lines[i+1] if i+1 < len(lines) else "",
-                    lines[i+2] if i+2 < len(lines) else "",
-                    lines[i+3] if i+3 < len(lines) else ""
-                ],
-                "correct": 0
-            })
+        for i in range(len(lines)):
+            if "?" in lines[i]:
+                opts = []
 
-    return {
-        "status": "ok",
-        "loaded_questions": len(QUESTIONS)
-    }
+                if i + 1 < len(lines):
+                    opts.append(lines[i + 1])
+                if i + 2 < len(lines):
+                    opts.append(lines[i + 2])
+                if i + 3 < len(lines):
+                    opts.append(lines[i + 3])
+
+                QUESTIONS.append({
+                    "question": lines[i],
+                    "options": opts,
+                    "correct": 0
+                })
+
+        return {
+            "status": "ok",
+            "loaded_questions": len(QUESTIONS)
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 
-# 📥 TEST
 @app.get("/test")
 def test():
     if not QUESTIONS:
@@ -56,7 +66,6 @@ def test():
     return random.sample(QUESTIONS, min(30, len(QUESTIONS)))
 
 
-# ❤️ HEALTH CHECK
 @app.get("/")
 def home():
     return {"status": "ok"}

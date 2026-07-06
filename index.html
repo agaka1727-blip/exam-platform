@@ -1,116 +1,684 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Exam Platform</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📘 Exam Platform</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 0 20px;
+            background: #f0f2f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #1a237e;
+            margin-bottom: 20px;
+        }
+        .menu {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .menu-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            flex: 1;
+            min-width: 120px;
+        }
+        .menu-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .menu-btn.active {
+            background: #1a237e;
+            color: white;
+        }
+        .menu-btn.learn {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .menu-btn.learn.active {
+            background: #2e7d32;
+            color: white;
+        }
+        .menu-btn.test {
+            background: #e3f2fd;
+            color: #0d47a1;
+        }
+        .menu-btn.test.active {
+            background: #0d47a1;
+            color: white;
+        }
+        .menu-btn.timer {
+            background: #fff3e0;
+            color: #e65100;
+        }
+        .menu-btn.timer.active {
+            background: #e65100;
+            color: white;
+        }
+        #timer {
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            background: #e8eaf6;
+            color: #1a237e;
+        }
+        #timer.warning {
+            color: #dc3545;
+            background: #ffe6e6;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .cat-btn {
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        .cat-btn:hover {
+            background: #e8eaf6;
+            border-color: #1a237e;
+        }
+        .cat-btn.active {
+            background: #1a237e;
+            color: white;
+            border-color: #1a237e;
+        }
+        .cat-count {
+            font-size: 12px;
+            color: #6c757d;
+            display: block;
+        }
+        .question-text {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #1a237e;
+        }
+        .option-btn {
+            display: block;
+            width: 100%;
+            padding: 14px 20px;
+            margin: 8px 0;
+            text-align: left;
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        .option-btn:hover {
+            background: #e8eaf6;
+            border-color: #1a237e;
+        }
+        .option-btn.selected {
+            background: #c5cae9;
+            border-color: #1a237e;
+        }
+        .option-btn.correct {
+            background: #a5d6a7;
+            border-color: #2e7d32;
+        }
+        .option-btn.wrong {
+            background: #ef9a9a;
+            border-color: #c62828;
+        }
+        .option-btn.show-correct {
+            background: #a5d6a7;
+            border-color: #2e7d32;
+        }
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .nav-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.2s;
+            flex: 1;
+            min-width: 80px;
+        }
+        .nav-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-primary { background: #1a237e; color: white; }
+        .btn-success { background: #2e7d32; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-danger { background: #c62828; color: white; }
+        .btn-warning { background: #e65100; color: white; }
+        .progress-info {
+            text-align: center;
+            margin: 15px 0;
+            color: #6c757d;
+            font-size: 16px;
+        }
+        .error-message {
+            color: #dc3545;
+            padding: 20px;
+            background: #ffe6e6;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .result-box {
+            text-align: center;
+            padding: 30px;
+        }
+        .result-score {
+            font-size: 56px;
+            font-weight: bold;
+            color: #1a237e;
+        }
+        .result-details {
+            font-size: 20px;
+            margin-top: 10px;
+        }
+        .upload-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .upload-section input {
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            flex: 1;
+            min-width: 150px;
+        }
+        .upload-section button {
+            padding: 10px 25px;
+            background: #1a237e;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .upload-section button:hover {
+            background: #0d1a6b;
+        }
+        .mode-indicator {
+            text-align: center;
+            padding: 8px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            background: #e8eaf6;
+            color: #1a237e;
+        }
+        .back-btn {
+            margin-bottom: 15px;
+        }
+    </style>
 </head>
-
 <body>
-
-<h2>📘 Exam Platform</h2>
-
-<div id="timer">Загрузка...</div>
-
-<hr>
-
-<div id="app">Загрузка экзамена...</div>
+<div class="container">
+    <h1>📘 Exam Platform</h1>
+    
+    <div class="upload-section">
+        <input type="file" id="fileInput" accept=".docx,.txt">
+        <button onclick="uploadQuestions()">📤 Загрузить вопросы</button>
+        <span id="uploadStatus"></span>
+    </div>
+    
+    <div class="menu">
+        <button class="menu-btn learn" id="learnMode" onclick="setMode('learn')">📖 Выучить ответы</button>
+        <button class="menu-btn test active" id="testMode" onclick="setMode('test')">📝 Тест без времени</button>
+        <button class="menu-btn timer" id="timerMode" onclick="setMode('timer')">⏱ Тест на время</button>
+    </div>
+    
+    <div id="timer">⏱ Загрузка...</div>
+    
+    <div class="categories-grid" id="categoriesGrid"></div>
+    
+    <div id="app">Загрузка экзамена...</div>
+</div>
 
 <script>
+    const API_BASE = "https://exam-platform-dmv5.onrender.com";
+    let allQuestions = [];
+    let filteredQuestions = [];
+    let currentIndex = 0;
+    let score = 0;
+    let timer = 60 * 60;
+    let timerInterval = null;
+    let isFinished = false;
+    let currentMode = 'test';
+    let selectedCategory = 'Все';
+    let answeredQuestions = new Set();
+    let userAnswers = {};
+    let totalTimerMinutes = 110;
 
-let questions = [];
-let index = 0;
-let score = 0;
-let timer = 60 * 60;
-
-const API = "https://exam-platform-dmv5.onrender.com/test";
-
-fetch(API)
-.then(r => r.json())
-.then(data => {
-
-    questions = data;
-
-    if (!questions || questions.length === 0) {
-        document.getElementById("app").innerHTML = "❌ Нет вопросов (сначала /upload)";
-        return;
+    function loadQuestions() {
+        document.getElementById("app").innerHTML = "Загрузка экзамена...";
+        
+        fetch(`${API_BASE}/questions`)
+            .then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            })
+            .then(data => {
+                allQuestions = data;
+                if (!allQuestions || allQuestions.length === 0) {
+                    document.getElementById("app").innerHTML = `
+                        <div class="error-message">
+                            ❌ Нет вопросов.<br>
+                            Загрузите файл через форму выше.
+                        </div>
+                    `;
+                    document.getElementById("timer").innerText = "⏱ Нет вопросов";
+                    return;
+                }
+                renderCategories();
+                filteredQuestions = allQuestions;
+                currentIndex = 0;
+                score = 0;
+                answeredQuestions = new Set();
+                userAnswers = {};
+                render();
+                startTimer();
+            })
+            .catch(error => {
+                console.error("Ошибка:", error);
+                document.getElementById("app").innerHTML = `
+                    <div class="error-message">
+                        ❌ Не удалось загрузить вопросы.<br>
+                        Проверьте сервер: ${API_BASE}<br>
+                        <small>${error.message}</small>
+                    </div>
+                `;
+                document.getElementById("timer").innerText = "⏱ Ошибка";
+            });
     }
 
-    render();
-    startTimer();
-});
-
-function render() {
-
-    const q = questions[index];
-
-    let html = `
-        <h3>Вопрос ${index + 1}</h3>
-        <p>${q.question}</p>
-    `;
-
-    q.options.forEach((opt, i) => {
-        html += `
-            <button onclick="answer(${i})">
-                ${opt}
-            </button>
-            <br><br>
-        `;
-    });
-
-    html += `
-        <hr>
-        <button onclick="prev()">⬅ Назад</button>
-        <button onclick="next()">Вперёд ➡</button>
-        <button onclick="finish()">Завершить</button>
-    `;
-
-    document.getElementById("app").innerHTML = html;
-}
-
-function answer(i) {
-    if (i === questions[index].correct) {
-        score++;
+    function renderCategories() {
+        const categories = new Set();
+        allQuestions.forEach(q => {
+            if (q.category) categories.add(q.category);
+        });
+        const grid = document.getElementById('categoriesGrid');
+        let html = `<button class="cat-btn active" onclick="filterByCategory('Все')">📋 Все (${allQuestions.length})</button>`;
+        categories.forEach(cat => {
+            const count = allQuestions.filter(q => q.category === cat).length;
+            html += `<button class="cat-btn" onclick="filterByCategory('${cat}')">${cat} (${count})</button>`;
+        });
+        grid.innerHTML = html;
     }
-}
 
-function next() {
-    if (index < questions.length - 1) {
-        index++;
-        render();
-    }
-}
-
-function prev() {
-    if (index > 0) {
-        index--;
-        render();
-    }
-}
-
-function finish() {
-    alert("Результат: " + score + " / " + questions.length);
-}
-
-function startTimer() {
-
-    setInterval(() => {
-
-        timer--;
-
-        let m = Math.floor(timer / 60);
-        let s = timer % 60;
-
-        document.getElementById("timer").innerText =
-            m + ":" + (s < 10 ? "0" : "") + s;
-
-        if (timer <= 0) {
-            finish();
+    function filterByCategory(category) {
+        selectedCategory = category;
+        document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        if (category === 'Все') {
+            filteredQuestions = allQuestions;
+        } else {
+            filteredQuestions = allQuestions.filter(q => q.category === category);
         }
+        currentIndex = 0;
+        score = 0;
+        answeredQuestions = new Set();
+        userAnswers = {};
+        render();
+    }
 
-    }, 1000);
-}
+    function setMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(mode + 'Mode').classList.add('active');
+        
+        currentIndex = 0;
+        score = 0;
+        answeredQuestions = new Set();
+        userAnswers = {};
+        
+        if (mode === 'timer') {
+            timer = totalTimerMinutes * 60;
+            document.getElementById('timer').classList.remove('warning');
+        } else {
+            timer = 60 * 60;
+            document.getElementById('timer').classList.remove('warning');
+        }
+        
+        render();
+        startTimer();
+    }
 
+    function render() {
+        if (isFinished) return;
+        if (!filteredQuestions || filteredQuestions.length === 0) {
+            document.getElementById("app").innerHTML = `
+                <div class="error-message">❌ Нет вопросов в выбранной категории</div>
+            `;
+            return;
+        }
+        
+        const q = filteredQuestions[currentIndex];
+        if (!q) return;
+
+        let modeText = '';
+        if (currentMode === 'learn') modeText = '📖 Режим обучения — правильный ответ подсвечивается';
+        else if (currentMode === 'test') modeText = '📝 Режим теста — выберите ответ, результат в конце';
+        else if (currentMode === 'timer') modeText = `⏱ Режим на время — ${totalTimerMinutes} минут на все вопросы`;
+        
+        let html = `
+            <div class="mode-indicator">${modeText}</div>
+            <div class="question-text">
+                <strong>Вопрос ${currentIndex + 1} из ${filteredQuestions.length}</strong>
+                ${q.category ? `<br><small style="color:#6c757d;">📂 ${q.category}</small>` : ''}
+                <br><br>
+                ${escapeHtml(q.question)}
+            </div>
+        `;
+
+        const isAnswered = answeredQuestions.has(currentIndex);
+        const selectedAnswer = userAnswers[currentIndex];
+        
+        q.options.forEach((opt, i) => {
+            let btnClass = 'option-btn';
+            const isCorrect = i === q.correct;
+            
+            if (currentMode === 'learn') {
+                if (isCorrect) btnClass += ' show-correct';
+                if (selectedAnswer === i) btnClass += ' selected';
+            } else {
+                if (isAnswered) {
+                    if (selectedAnswer === i) {
+                        btnClass += isCorrect ? ' correct' : ' wrong';
+                    }
+                    if (isCorrect) btnClass += ' show-correct';
+                } else {
+                    if (selectedAnswer === i) btnClass += ' selected';
+                }
+            }
+            
+            const disabled = isAnswered && currentMode !== 'learn' ? 'style="pointer-events:none;"' : '';
+            html += `
+                <button class="${btnClass}" onclick="selectAnswer(${i})" ${disabled}>
+                    ${i + 1}. ${escapeHtml(opt)}
+                </button>
+            `;
+        });
+
+        html += `
+            <div class="progress-info">
+                ${currentIndex + 1} / ${filteredQuestions.length} • Правильных: ${score}
+                ${currentMode === 'timer' ? ` • ⏱ ${formatTime(timer)}` : ''}
+            </div>
+            <div class="nav-buttons">
+                <button class="nav-btn btn-secondary" onclick="prevQuestion()" ${currentIndex === 0 ? 'disabled' : ''}>
+                    ⬅ Назад
+                </button>
+                <button class="nav-btn btn-primary" onclick="nextQuestion()" ${currentIndex === filteredQuestions.length - 1 ? 'disabled' : ''}>
+                    Вперёд ➡
+                </button>
+                <button class="nav-btn btn-success" onclick="finishTest()">
+                    🏁 Завершить
+                </button>
+            </div>
+        `;
+
+        document.getElementById("app").innerHTML = html;
+    }
+
+    function selectAnswer(i) {
+        if (currentMode === 'learn') {
+            if (userAnswers[currentIndex] === i) {
+                delete userAnswers[currentIndex];
+            } else {
+                userAnswers[currentIndex] = i;
+            }
+            render();
+            return;
+        }
+        
+        if (answeredQuestions.has(currentIndex)) return;
+        
+        const q = filteredQuestions[currentIndex];
+        userAnswers[currentIndex] = i;
+        answeredQuestions.add(currentIndex);
+        
+        if (i === q.correct) {
+            score++;
+        }
+        
+        render();
+        
+        if (currentMode !== 'learn') {
+            setTimeout(() => {
+                if (currentIndex < filteredQuestions.length - 1) {
+                    nextQuestion();
+                }
+            }, 500);
+        }
+    }
+
+    function nextQuestion() {
+        if (currentIndex < filteredQuestions.length - 1) {
+            currentIndex++;
+            render();
+        }
+    }
+
+    function prevQuestion() {
+        if (currentIndex > 0) {
+            currentIndex--;
+            render();
+        }
+    }
+
+    function finishTest() {
+        if (isFinished) return;
+        isFinished = true;
+        if (timerInterval) clearInterval(timerInterval);
+        
+        const total = filteredQuestions.length;
+        const percent = Math.round((score / total) * 100);
+        let grade = 'Неудовлетворительно';
+        if (percent >= 90) grade = 'Отлично 🏆';
+        else if (percent >= 70) grade = 'Хорошо 👍';
+        else if (percent >= 50) grade = 'Удовлетворительно 📚';
+        
+        document.getElementById("app").innerHTML = `
+            <div class="result-box">
+                <h2>📊 Результат</h2>
+                <div class="result-score">${score} / ${total}</div>
+                <div class="result-details">${percent}% — ${grade}</div>
+                ${currentMode === 'timer' ? `<div class="result-details">⏱ Время: ${formatTime(totalTimerMinutes * 60 - timer)}</div>` : ''}
+                <br>
+                <button class="nav-btn btn-primary" onclick="resetTest()">🔄 Пройти заново</button>
+                <button class="nav-btn btn-secondary" onclick="showWrongAnswers()">❌ Посмотреть ошибки</button>
+            </div>
+        `;
+        document.getElementById("timer").innerText = "⏱ Завершено";
+    }
+
+    function showWrongAnswers() {
+        const wrongQuestions = filteredQuestions.filter((q, idx) => {
+            return answeredQuestions.has(idx) && userAnswers[idx] !== q.correct;
+        });
+        if (wrongQuestions.length === 0) {
+            alert('🎉 Все ответы правильные!');
+            return;
+        }
+        filteredQuestions = wrongQuestions;
+        currentIndex = 0;
+        score = 0;
+        answeredQuestions = new Set();
+        userAnswers = {};
+        isFinished = false;
+        document.getElementById('timer').innerText = '📖 Просмотр ошибок';
+        render();
+    }
+
+    function resetTest() {
+        isFinished = false;
+        currentIndex = 0;
+        score = 0;
+        answeredQuestions = new Set();
+        userAnswers = {};
+        if (currentMode === 'timer') {
+            timer = totalTimerMinutes * 60;
+            document.getElementById('timer').classList.remove('warning');
+        } else {
+            timer = 60 * 60;
+        }
+        render();
+        startTimer();
+    }
+
+    function startTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        
+        timerInterval = setInterval(() => {
+            if (currentMode !== 'timer') {
+                timer--;
+                updateTimerDisplay();
+                if (timer <= 0) {
+                    clearInterval(timerInterval);
+                }
+                return;
+            }
+            
+            timer--;
+            updateTimerDisplay();
+            
+            if (timer < 300) {
+                document.getElementById('timer').classList.add('warning');
+            }
+            
+            if (timer <= 0) {
+                clearInterval(timerInterval);
+                if (!isFinished) {
+                    alert('⏰ Время вышло!');
+                    finishTest();
+                }
+            }
+        }, 1000);
+    }
+
+    function updateTimerDisplay() {
+        const timerElement = document.getElementById("timer");
+        if (currentMode === 'timer') {
+            timerElement.innerText = `⏱ Осталось: ${formatTime(timer)}`;
+        } else {
+            const m = Math.floor(timer / 60);
+            const s = timer % 60;
+            timerElement.innerText = `⏱ ${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+    }
+
+    function formatTime(seconds) {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function uploadQuestions() {
+        const fileInput = document.getElementById('fileInput');
+        const statusEl = document.getElementById('uploadStatus');
+        
+        if (!fileInput.files || fileInput.files.length === 0) {
+            statusEl.textContent = '❌ Выберите файл';
+            statusEl.style.color = '#dc3545';
+            return;
+        }
+        
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        statusEl.textContent = '⏳ Загрузка...';
+        statusEl.style.color = '#0d6efd';
+        
+        fetch(`${API_BASE}/upload`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                statusEl.textContent = `✅ ${data.message}`;
+                statusEl.style.color = '#198754';
+                setTimeout(loadQuestions, 1000);
+            } else {
+                statusEl.textContent = `❌ ${data.message}`;
+                statusEl.style.color = '#dc3545';
+            }
+        })
+        .catch(error => {
+            statusEl.textContent = `❌ Ошибка: ${error.message}`;
+            statusEl.style.color = '#dc3545';
+        });
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    loadQuestions();
 </script>
-
 </body>
 </html>

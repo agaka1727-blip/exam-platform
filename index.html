@@ -307,6 +307,7 @@
     let answeredQuestions = new Set();
     let userAnswers = {};
     let totalTimerMinutes = 110;
+    let totalTimerQuestions = 110;
 
     function loadQuestions() {
         document.getElementById("app").innerHTML = "Загрузка экзамена...";
@@ -392,9 +393,13 @@
         userAnswers = {};
         
         if (mode === 'timer') {
+            // Выбираем 110 вопросов пропорционально из всех категорий
+            filteredQuestions = selectProportionalQuestions(allQuestions, totalTimerQuestions);
             timer = totalTimerMinutes * 60;
             document.getElementById('timer').classList.remove('warning');
+            document.getElementById('timer').innerText = `⏱ Осталось: ${formatTime(timer)}`;
         } else {
+            filteredQuestions = allQuestions;
             timer = 60 * 60;
             document.getElementById('timer').classList.remove('warning');
         }
@@ -403,11 +408,66 @@
         startTimer();
     }
 
+    function selectProportionalQuestions(questions, totalCount) {
+        // Группируем вопросы по категориям
+        const categories = {};
+        questions.forEach(q => {
+            const cat = q.category || 'Общие';
+            if (!categories[cat]) categories[cat] = [];
+            categories[cat].push(q);
+        });
+        
+        // Считаем общее количество
+        const total = questions.length;
+        const result = [];
+        const categoryNames = Object.keys(categories);
+        
+        // Для каждой категории вычисляем, сколько вопросов взять
+        categoryNames.forEach(cat => {
+            const catQuestions = categories[cat];
+            const proportion = catQuestions.length / total;
+            let count = Math.round(proportion * totalCount);
+            // Минимум 1 вопрос, если категория не пустая
+            if (count === 0 && catQuestions.length > 0) count = 1;
+            // Перемешиваем и выбираем
+            const shuffled = shuffleArray([...catQuestions]);
+            const selected = shuffled.slice(0, Math.min(count, catQuestions.length));
+            result.push(...selected);
+        });
+        
+        // Если набрали меньше нужного, добираем из самых больших категорий
+        while (result.length < totalCount) {
+            const remaining = totalCount - result.length;
+            const shuffledAll = shuffleArray([...questions]);
+            for (let q of shuffledAll) {
+                if (!result.includes(q)) {
+                    result.push(q);
+                    if (result.length >= totalCount) break;
+                }
+            }
+        }
+        
+        // Если набрали больше, обрезаем
+        while (result.length > totalCount) {
+            result.pop();
+        }
+        
+        return shuffleArray(result);
+    }
+
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
     function render() {
         if (isFinished) return;
         if (!filteredQuestions || filteredQuestions.length === 0) {
             document.getElementById("app").innerHTML = `
-                <div class="error-message">❌ Нет вопросов в выбранной категории</div>
+                <div class="error-message">❌ Нет вопросов</div>
             `;
             return;
         }
@@ -418,7 +478,7 @@
         let modeText = '';
         if (currentMode === 'learn') modeText = '📖 Режим обучения — правильный ответ подсвечивается';
         else if (currentMode === 'test') modeText = '📝 Режим теста — выберите ответ, результат в конце';
-        else if (currentMode === 'timer') modeText = `⏱ Режим на время — ${totalTimerMinutes} минут на все вопросы`;
+        else if (currentMode === 'timer') modeText = `⏱ Режим на время — ${totalTimerMinutes} минут на ${totalTimerQuestions} вопросов`;
         
         let html = `
             <div class="mode-indicator">${modeText}</div>
@@ -577,9 +637,11 @@
         answeredQuestions = new Set();
         userAnswers = {};
         if (currentMode === 'timer') {
+            filteredQuestions = selectProportionalQuestions(allQuestions, totalTimerQuestions);
             timer = totalTimerMinutes * 60;
             document.getElementById('timer').classList.remove('warning');
         } else {
+            filteredQuestions = allQuestions;
             timer = 60 * 60;
         }
         render();

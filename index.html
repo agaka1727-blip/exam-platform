@@ -169,6 +169,10 @@
             background: #a5d6a7;
             border-color: #2e7d32;
         }
+        .option-btn:disabled {
+            opacity: 0.8;
+            cursor: not-allowed;
+        }
         .nav-buttons {
             display: flex;
             justify-content: space-between;
@@ -265,9 +269,6 @@
             background: #e8eaf6;
             color: #1a237e;
         }
-        .back-btn {
-            margin-bottom: 15px;
-        }
     </style>
 </head>
 <body>
@@ -307,7 +308,6 @@
     let answeredQuestions = new Set();
     let userAnswers = {};
     let totalTimerMinutes = 110;
-    let totalTimerQuestions = 110;
 
     function loadQuestions() {
         document.getElementById("app").innerHTML = "Загрузка экзамена...";
@@ -393,7 +393,6 @@
         userAnswers = {};
         
         if (mode === 'timer') {
-            // Выбираем 110 вопросов пропорционально из всех категорий
             filteredQuestions = selectProportionalQuestions(allQuestions, totalTimerQuestions);
             timer = totalTimerMinutes * 60;
             document.getElementById('timer').classList.remove('warning');
@@ -409,7 +408,6 @@
     }
 
     function selectProportionalQuestions(questions, totalCount) {
-        // Группируем вопросы по категориям
         const categories = {};
         questions.forEach(q => {
             const cat = q.category || 'Общие';
@@ -417,25 +415,20 @@
             categories[cat].push(q);
         });
         
-        // Считаем общее количество
         const total = questions.length;
         const result = [];
         const categoryNames = Object.keys(categories);
         
-        // Для каждой категории вычисляем, сколько вопросов взять
         categoryNames.forEach(cat => {
             const catQuestions = categories[cat];
             const proportion = catQuestions.length / total;
             let count = Math.round(proportion * totalCount);
-            // Минимум 1 вопрос, если категория не пустая
             if (count === 0 && catQuestions.length > 0) count = 1;
-            // Перемешиваем и выбираем
             const shuffled = shuffleArray([...catQuestions]);
             const selected = shuffled.slice(0, Math.min(count, catQuestions.length));
             result.push(...selected);
         });
         
-        // Если набрали меньше нужного, добираем из самых больших категорий
         while (result.length < totalCount) {
             const remaining = totalCount - result.length;
             const shuffledAll = shuffleArray([...questions]);
@@ -447,7 +440,6 @@
             }
         }
         
-        // Если набрали больше, обрезаем
         while (result.length > totalCount) {
             result.pop();
         }
@@ -467,7 +459,7 @@
         if (isFinished) return;
         if (!filteredQuestions || filteredQuestions.length === 0) {
             document.getElementById("app").innerHTML = `
-                <div class="error-message">❌ Нет вопросов</div>
+                <div class="error-message">❌ Нет вопросов в выбранной категории</div>
             `;
             return;
         }
@@ -478,8 +470,11 @@
         let modeText = '';
         if (currentMode === 'learn') modeText = '📖 Режим обучения — правильный ответ подсвечивается';
         else if (currentMode === 'test') modeText = '📝 Режим теста — выберите ответ, результат в конце';
-        else if (currentMode === 'timer') modeText = `⏱ Режим на время — ${totalTimerMinutes} минут на ${totalTimerQuestions} вопросов`;
+        else if (currentMode === 'timer') modeText = `⏱ Режим на время — ${totalTimerMinutes} минут на ${filteredQuestions.length} вопросов`;
         
+        const isAnswered = answeredQuestions.has(currentIndex);
+        const selectedAnswer = userAnswers[currentIndex];
+
         let html = `
             <div class="mode-indicator">${modeText}</div>
             <div class="question-text">
@@ -490,9 +485,6 @@
             </div>
         `;
 
-        const isAnswered = answeredQuestions.has(currentIndex);
-        const selectedAnswer = userAnswers[currentIndex];
-        
         q.options.forEach((opt, i) => {
             let btnClass = 'option-btn';
             const isCorrect = i === q.correct;
@@ -500,35 +492,63 @@
             if (currentMode === 'learn') {
                 if (isCorrect) btnClass += ' show-correct';
                 if (selectedAnswer === i) btnClass += ' selected';
+                const disabled = isAnswered ? 'disabled' : '';
+                html += `
+                    <button class="${btnClass}" onclick="selectAnswer(${i})" ${disabled}>
+                        ${String.fromCharCode(65 + i)}. ${escapeHtml(opt)}
+                    </button>
+                `;
             } else {
+                // Для режимов test и timer
                 if (isAnswered) {
                     if (selectedAnswer === i) {
                         btnClass += isCorrect ? ' correct' : ' wrong';
                     }
-                    if (isCorrect) btnClass += ' show-correct';
+                    if (isCorrect) {
+                        btnClass += ' show-correct';
+                    }
+                    const disabled = 'disabled';
+                    html += `
+                        <button class="${btnClass}" onclick="selectAnswer(${i})" ${disabled}>
+                            ${String.fromCharCode(65 + i)}. ${escapeHtml(opt)}
+                        </button>
+                    `;
                 } else {
-                    if (selectedAnswer === i) btnClass += ' selected';
+                    if (selectedAnswer === i) {
+                        btnClass += ' selected';
+                    }
+                    html += `
+                        <button class="${btnClass}" onclick="selectAnswer(${i})">
+                            ${String.fromCharCode(65 + i)}. ${escapeHtml(opt)}
+                        </button>
+                    `;
                 }
             }
-            
-            const disabled = isAnswered && currentMode !== 'learn' ? 'style="pointer-events:none;"' : '';
-            html += `
-                <button class="${btnClass}" onclick="selectAnswer(${i})" ${disabled}>
-                    ${i + 1}. ${escapeHtml(opt)}
-                </button>
-            `;
         });
+
+        // Отображаем результат после ответа
+        let resultMessage = '';
+        let nextButtonDisabled = true;
+        if (isAnswered && currentMode !== 'learn') {
+            const isCorrect = selectedAnswer === q.correct;
+            resultMessage = isCorrect ? '✅ Правильно!' : '❌ Неправильно. Правильный ответ выделен зелёным.';
+            nextButtonDisabled = false;
+        } else if (currentMode === 'learn') {
+            // В режиме обучения всегда можно перейти дальше
+            nextButtonDisabled = false;
+        }
 
         html += `
             <div class="progress-info">
                 ${currentIndex + 1} / ${filteredQuestions.length} • Правильных: ${score}
                 ${currentMode === 'timer' ? ` • ⏱ ${formatTime(timer)}` : ''}
+                ${resultMessage ? `<br><strong style="color: ${isAnswered && selectedAnswer === q.correct ? '#2e7d32' : '#c62828'};">${resultMessage}</strong>` : ''}
             </div>
             <div class="nav-buttons">
                 <button class="nav-btn btn-secondary" onclick="prevQuestion()" ${currentIndex === 0 ? 'disabled' : ''}>
                     ⬅ Назад
                 </button>
-                <button class="nav-btn btn-primary" onclick="nextQuestion()" ${currentIndex === filteredQuestions.length - 1 ? 'disabled' : ''}>
+                <button class="nav-btn btn-primary" onclick="nextQuestion()" ${nextButtonDisabled ? 'disabled' : ''}>
                     Вперёд ➡
                 </button>
                 <button class="nav-btn btn-success" onclick="finishTest()">
@@ -541,7 +561,9 @@
     }
 
     function selectAnswer(i) {
+        if (answeredQuestions.has(currentIndex)) return;
         if (currentMode === 'learn') {
+            // В режиме обучения просто запоминаем выбранный вариант
             if (userAnswers[currentIndex] === i) {
                 delete userAnswers[currentIndex];
             } else {
@@ -550,8 +572,6 @@
             render();
             return;
         }
-        
-        if (answeredQuestions.has(currentIndex)) return;
         
         const q = filteredQuestions[currentIndex];
         userAnswers[currentIndex] = i;
@@ -562,17 +582,14 @@
         }
         
         render();
-        
-        if (currentMode !== 'learn') {
-            setTimeout(() => {
-                if (currentIndex < filteredQuestions.length - 1) {
-                    nextQuestion();
-                }
-            }, 500);
-        }
     }
 
     function nextQuestion() {
+        // Для режима обучения пропускаем проверку
+        if (currentMode !== 'learn' && !answeredQuestions.has(currentIndex)) {
+            alert('Сначала выберите ответ!');
+            return;
+        }
         if (currentIndex < filteredQuestions.length - 1) {
             currentIndex++;
             render();
@@ -587,6 +604,14 @@
     }
 
     function finishTest() {
+        if (currentMode !== 'learn') {
+            if (answeredQuestions.size < filteredQuestions.length) {
+                if (!confirm(`Вы ответили только на ${answeredQuestions.size} из ${filteredQuestions.length} вопросов. Завершить тест?`)) {
+                    return;
+                }
+            }
+        }
+        
         if (isFinished) return;
         isFinished = true;
         if (timerInterval) clearInterval(timerInterval);
@@ -607,6 +632,7 @@
                 <br>
                 <button class="nav-btn btn-primary" onclick="resetTest()">🔄 Пройти заново</button>
                 <button class="nav-btn btn-secondary" onclick="showWrongAnswers()">❌ Посмотреть ошибки</button>
+                <button class="nav-btn btn-secondary" onclick="window.location.href='https://agaka1727-blip.github.io/exam-platform/'">🏠 На главную</button>
             </div>
         `;
         document.getElementById("timer").innerText = "⏱ Завершено";
@@ -740,6 +766,7 @@
         return div.innerHTML;
     }
 
+    // Запускаем загрузку при открытии страницы
     loadQuestions();
 </script>
 </body>

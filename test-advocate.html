@@ -100,6 +100,10 @@
             background: #a5d6a7;
             border-color: #2e7d32;
         }
+        .option-btn:disabled {
+            opacity: 0.8;
+            cursor: not-allowed;
+        }
         .nav-buttons {
             display: flex;
             justify-content: space-between;
@@ -175,7 +179,7 @@
     <h1>⚖️ Тест по Адвокатуре</h1>
     
     <div class="info-box">
-        <strong>📋 Все вопросы (2586) • ⏱ Без ограничения времени</strong>
+        <strong>📋 Все вопросы (${localStorage.getItem('totalQuestions') || '...'}) • ⏱ Без ограничения времени</strong>
     </div>
     
     <div id="timer">⏱ Загрузка...</div>
@@ -192,8 +196,9 @@
     let timer = 60 * 60;
     let timerInterval = null;
     let isFinished = false;
-    let answeredQuestions = new Set();
-    let userAnswers = {};
+    let answeredQuestions = new Set(); // Хранит индексы отвеченных вопросов
+    let userAnswers = {}; // Хранит ответы пользователя {index: selectedOptionIndex}
+    let totalQuestions = 0;
 
     function loadQuestions() {
         document.getElementById("app").innerHTML = "Загрузка экзамена...";
@@ -233,9 +238,11 @@
     function startTest() {
         // Показываем ВСЕ вопросы без фильтра по категории
         filteredQuestions = shuffleArray([...allQuestions]);
+        totalQuestions = filteredQuestions.length;
+        localStorage.setItem('totalQuestions', totalQuestions);
         
         document.querySelector('.info-box').innerHTML = `
-            <strong>📋 Все вопросы (${filteredQuestions.length}) • ⏱ Без ограничения времени</strong>
+            <strong>📋 Все вопросы (${totalQuestions}) • ⏱ Без ограничения времени</strong>
         `;
         
         currentIndex = 0;
@@ -269,6 +276,9 @@
         const q = filteredQuestions[currentIndex];
         if (!q) return;
 
+        const isAnswered = answeredQuestions.has(currentIndex);
+        const selectedAnswer = userAnswers[currentIndex];
+
         let html = `
             <div class="question-text">
                 <strong>Вопрос ${currentIndex + 1} из ${filteredQuestions.length}</strong>
@@ -278,43 +288,53 @@
             </div>
         `;
 
-        const isAnswered = answeredQuestions.has(currentIndex);
-        const selectedAnswer = userAnswers[currentIndex];
-        
         q.options.forEach((opt, i) => {
             let btnClass = 'option-btn';
             const isCorrect = i === q.correct;
+            const isSelected = (selectedAnswer === i);
             
             if (isAnswered) {
-                if (selectedAnswer === i) {
-                    btnClass += isCorrect ? ' correct' : ' wrong';
-                }
-                if (isCorrect) {
-                    btnClass += ' show-correct';
+                // Если вопрос уже отвечен, блокируем кнопки
+                if (isSelected && isCorrect) {
+                    btnClass += ' correct'; // Выбрал правильно
+                } else if (isSelected && !isCorrect) {
+                    btnClass += ' wrong'; // Выбрал неправильно
+                } else if (isCorrect) {
+                    btnClass += ' show-correct'; // Показываем правильный ответ
                 }
             } else {
-                if (selectedAnswer === i) {
-                    btnClass += ' selected';
+                if (isSelected) {
+                    btnClass += ' selected'; // Временно подсвечиваем выбранный
                 }
             }
             
-            const disabled = isAnswered ? 'style="pointer-events:none;"' : '';
+            const disabled = isAnswered ? 'disabled' : '';
             html += `
                 <button class="${btnClass}" onclick="selectAnswer(${i})" ${disabled}>
-                    ${i + 1}. ${escapeHtml(opt)}
+                    ${String.fromCharCode(65 + i)}. ${escapeHtml(opt)}
                 </button>
             `;
         });
 
+        // Отображаем результат после ответа
+        let resultMessage = '';
+        let nextButtonDisabled = true;
+        if (isAnswered) {
+            const isCorrect = selectedAnswer === q.correct;
+            resultMessage = isCorrect ? '✅ Правильно!' : '❌ Неправильно. Правильный ответ выделен зелёным.';
+            nextButtonDisabled = false; // Активируем кнопку "Вперёд"
+        }
+
         html += `
             <div class="progress-info">
                 ${currentIndex + 1} / ${filteredQuestions.length} • Правильных: ${score}
+                ${resultMessage ? `<br><strong style="color: ${isAnswered && selectedAnswer === q.correct ? '#2e7d32' : '#c62828'};">${resultMessage}</strong>` : ''}
             </div>
             <div class="nav-buttons">
                 <button class="nav-btn btn-secondary" onclick="prevQuestion()" ${currentIndex === 0 ? 'disabled' : ''}>
                     ⬅ Назад
                 </button>
-                <button class="nav-btn btn-primary" onclick="nextQuestion()" ${currentIndex === filteredQuestions.length - 1 ? 'disabled' : ''}>
+                <button class="nav-btn btn-primary" onclick="nextQuestion()" ${nextButtonDisabled ? 'disabled' : ''}>
                     Вперёд ➡
                 </button>
                 <button class="nav-btn btn-success" onclick="finishTest()">
@@ -327,26 +347,29 @@
     }
 
     function selectAnswer(i) {
+        // Если вопрос уже отвечен, ничего не делаем
         if (answeredQuestions.has(currentIndex)) return;
         
         const q = filteredQuestions[currentIndex];
+        // Сохраняем ответ пользователя
         userAnswers[currentIndex] = i;
         answeredQuestions.add(currentIndex);
         
+        // Проверяем правильность ответа
         if (i === q.correct) {
             score++;
         }
         
+        // Перерисовываем текущий вопрос с результатом
         render();
-        
-        setTimeout(() => {
-            if (currentIndex < filteredQuestions.length - 1) {
-                nextQuestion();
-            }
-        }, 500);
     }
 
     function nextQuestion() {
+        // Переходим к следующему вопросу только если текущий отвечен
+        if (!answeredQuestions.has(currentIndex)) {
+            alert('Сначала выберите ответ!');
+            return;
+        }
         if (currentIndex < filteredQuestions.length - 1) {
             currentIndex++;
             render();
@@ -361,6 +384,13 @@
     }
 
     function finishTest() {
+        // Проверяем, все ли вопросы отвечены
+        if (answeredQuestions.size < filteredQuestions.length) {
+            if (!confirm(`Вы ответили только на ${answeredQuestions.size} из ${filteredQuestions.length} вопросов. Завершить тест?`)) {
+                return;
+            }
+        }
+        
         if (isFinished) return;
         isFinished = true;
         if (timerInterval) clearInterval(timerInterval);
@@ -380,6 +410,7 @@
                 <br>
                 <button class="nav-btn btn-primary" onclick="resetTest()">🔄 Пройти заново</button>
                 <button class="nav-btn btn-secondary" onclick="showWrongAnswers()">❌ Посмотреть ошибки</button>
+                <button class="nav-btn btn-secondary" onclick="window.location.href='https://agaka1727-blip.github.io/exam-platform/'">🏠 На главную</button>
             </div>
         `;
         document.getElementById("timer").innerText = "⏱ Завершено";
@@ -393,9 +424,11 @@
             alert('🎉 Все ответы правильные!');
             return;
         }
+        // Переключаемся на режим просмотра ошибок
         filteredQuestions = wrongQuestions;
         currentIndex = 0;
         score = 0;
+        // Очищаем ответы для режима просмотра
         answeredQuestions = new Set();
         userAnswers = {};
         isFinished = false;
@@ -404,7 +437,17 @@
     }
 
     function resetTest() {
-        startTest();
+        // Перемешиваем вопросы заново
+        filteredQuestions = shuffleArray([...allQuestions]);
+        currentIndex = 0;
+        score = 0;
+        answeredQuestions = new Set();
+        userAnswers = {};
+        isFinished = false;
+        timer = 60 * 60;
+        document.getElementById('timer').classList.remove('warning');
+        render();
+        startTimer();
     }
 
     function startTimer() {
@@ -416,8 +459,16 @@
             const s = timer % 60;
             document.getElementById("timer").innerText = `⏱ ${m}:${s < 10 ? '0' : ''}${s}`;
             
+            if (timer < 60) {
+                document.getElementById('timer').classList.add('warning');
+            }
+            
             if (timer <= 0) {
                 clearInterval(timerInterval);
+                if (!isFinished) {
+                    alert('⏰ Время вышло!');
+                    finishTest();
+                }
             }
         }, 1000);
     }
@@ -429,6 +480,7 @@
         return div.innerHTML;
     }
 
+    // Запускаем загрузку при открытии страницы
     loadQuestions();
 </script>
 </body>
